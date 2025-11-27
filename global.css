@@ -1,0 +1,50 @@
+/* Custom CSS Variables and Base Styles */
+
+:root {
+    /* Light Mode Variables */
+    --background: 210 40% 98%; --foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%; --card-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 100%; --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 217 91% 60%; --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%; --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 214 32% 91%; --muted-foreground: 215 16% 47%;
+    --accent: 217 91% 60%; --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%; --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 88%; --input: 214 32% 91%; --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    
+    /* Traffic-specific colors */
+    --traffic-light: 142 76% 36%;
+    --traffic-moderate: 48 96% 53%;
+    --traffic-heavy: 0 84% 60%;
+}
+
+.dark {
+    /* Dark Mode Variables */
+    --background: 222 47% 11%; --foreground: 213 31% 91%;
+    --card: 223 47% 14%; --card-foreground: 213 31% 91%;
+    --popover: 223 47% 14%; --popover-foreground: 213 31% 91%;
+    --primary: 217 91% 60%; --primary-foreground: 0 0% 100%;
+    --secondary: 223 47% 20%; --secondary-foreground: 213 31% 91%;
+    --muted: 223 47% 20%; --muted-foreground: 215 20% 65%;
+    --accent: 217 91% 60%; --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%; --destructive-foreground: 0 0% 100%;
+    --border: 223 47% 20%; --input: 223 47% 20%; --ring: 217 91% 60%;
+    
+    /* Traffic-specific colors for dark mode */
+    --traffic-light: 142 76% 36%;
+    --traffic-moderate: 48 96% 53%;
+    --traffic-heavy: 0 84% 60%;
+}
+
+/* Base styles derived from your original index.css */
+* { border-color: hsl(var(--border)); }
+body { 
+    background-color: hsl(var(--background)); 
+    color: hsl(var(--foreground)); 
+}
+
+/* Utility to hide pages for JavaScript routing */
+.page-content { 
+    display: none; 
+}

@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Traffic Management System</title>
+    <meta name="description" content="Real-time traffic monitoring and intelligent signal control dashboard for smart city management" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="tailwind.config.js"></script>
+
+    <link rel="stylesheet" href="global.css">
+    
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css' rel='stylesheet' />
+    
+</head>
+
+<body class="min-h-screen antialiased">
+
+    <div id="initial-setup-screen" class="min-h-screen bg-background hidden items-center justify-center p-6 fixed inset-0 z-50">
+        <div class="max-w-md w-full bg-card border border-border rounded-lg p-8 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 text-3xl text-primary-foreground">
+                    🗺️
+                </div>
+                <h2 class="text-2xl font-bold text-foreground mb-2">Google Maps Setup</h2>
+                <p class="text-muted-foreground">Enter your Google Maps API key to enable real-time traffic data</p>
+            </div>
+
+            <form onsubmit="handleInitialSetupSubmit(event)" class="space-y-4">
+                <div>
+                    <label for="initial-setup-api-key" class="block text-sm font-medium text-foreground mb-2">Google Maps API Key</label>
+                    <input
+                        type="text"
+                        id="initial-setup-api-key"
+                        name="apiKey"
+                        placeholder="AIza..."
+                        required
+                        class="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                </div>
+
+                <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                    Continue to Dashboard
+                </button>
+
+                <button type="button" onclick="completeInitialSetup()" class="w-full px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 transition-colors">
+                    Skip (Use Demo Data)
+                </button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-border">
+                <p class="text-xs text-muted-foreground mb-2">How to get an API key:</p>
+                <ol class="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>Visit Google Cloud Console</li>
+                    <li>Enable Roads API</li>
+                    <li>Create an API key</li>
+                    <li>Paste it above</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="flex h-screen bg-background">
+        
+        <aside class="hidden md:flex w-64 bg-card border-r border-border flex-col">
+            <div class="p-4 md:p-6 border-b border-border">
+                <div class="flex items-center gap-2 md:gap-3">
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-primary rounded-lg flex items-center justify-center text-xl md:text-2xl">🚦</div>
+                    <div>
+                        <h1 class="text-base md:text-lg font-bold text-foreground">Traffic Control</h1>
+                        <p class="text-xs text-muted-foreground">Smart Management</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav id="sidebar-nav" class="flex-1 p-3 md:p-4 space-y-2">
+                <a href="#" data-path="/" class="nav-link w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="#" data-path="/analytics" class="nav-link w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <span>📈</span> Analytics
+                </a>
+                <a href="#" data-path="/traffic-info" class="nav-link w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <span>🚦</span> Traffic Info
+                </a>
+                <a href="#" data-path="/help" class="nav-link w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <span>❓</span> Help
+                </a>
+                <a href="#" data-path="/settings" class="nav-link w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <span>⚙️</span> Settings
+                </a>
+            </nav>
+            
+            <div class="p-3 md:p-4 border-t border-border">
+                <div class="text-xs text-muted-foreground">
+                    System Status: <span class="text-traffic-light">Active</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="h-14 md:h-16 bg-card border-b border-border px-3 md:px-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-base md:text-xl font-bold text-foreground">Traffic Management</h2>
+                    <p class="text-xs md:text-sm text-muted-foreground hidden sm:block">Real-time monitoring and control</p>
+                </div>
+                <div class="flex items-center gap-2 md:gap-4">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-xs md:text-sm font-medium text-foreground">System Time</div>
+                        <div id="system-time" class="text-xs text-muted-foreground"></div>
+                    </div>
+                    <button 
+                        id="theme-toggle" 
+                        onclick="toggleTheme()" 
+                        class="p-2 rounded-lg bg-card border border-border hover:bg-muted transition-colors" 
+                        aria-label="Toggle theme"
+                    >
+                        <span id="theme-icon" class="text-xl">
+                            </span>
+                    </button>
+                </div>
+            </header>
+
+            <div id="content-wrapper" class="flex-1 overflow-auto p-3 md:p-6 bg-background">
+                
+                <div id="page-dashboard" class="page-content space-y-4 md:space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                        <div class="lg:col-span-2 h-[300px] md:h-[400px] lg:h-[600px] bg-card border border-border rounded-lg overflow-hidden relative flex items-center justify-center p-2">
+                            
+                            <div id="static-map-container" class="w-full h-full flex items-center justify-center">
+                                <img id="static-map-image" src="map.jpg" alt="Static Traffic Map" class="max-w-full max-h-full object-contain border border-border rounded-lg">
+                                <p class="text-xs text-muted-foreground mt-2 absolute bottom-2">Static view of map.jpg</p>
+                            </div>
+                            
+                            <div id="mapbox-input-container" class="hidden"></div>
+                            <div id="map-container" class="hidden"></div>
+                        </div>
+
+                        <div class="space-y-3 md:space-y-4">
+                            <h3 class="text-base md:text-lg font-semibold text-foreground">Traffic Statistics</h3>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                                
+                                <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                    <div class="text-xs md:text-sm text-muted-foreground mb-1">Total Vehicles</div>
+                                    <div id="stat-total-vehicles" class="text-xl md:text-2xl font-bold text-foreground">Loading...</div>
+                                    <p class="text-xs text-muted-foreground mt-1">On monitored routes</p>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                    <div class="text-xs md:text-sm text-muted-foreground mb-1">Average Speed</div>
+                                    <div id="stat-avg-speed" class="text-xl md:text-2xl font-bold text-foreground">Loading...</div>
+                                    <p class="text-xs text-muted-foreground mt-1">Across all routes</p>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                    <div class="text-xs md:text-sm text-muted-foreground mb-1">Congestion Level</div>
+                                    <div id="stat-congestion-value" class="text-xl md:text-2xl font-bold">Loading...</div>
+                                    <div class="w-full bg-muted rounded-full h-2 mt-2">
+                                        <div id="stat-congestion-bar"
+                                            class="h-2 rounded-full"
+                                            style="width: 0%"
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                    <div class="text-xs md:text-sm text-muted-foreground mb-1">Active Signals</div>
+                                    <div id="stat-active-signals" class="text-xl md:text-2xl font-bold text-foreground">Loading...</div>
+                                    <p class="text-xs text-muted-foreground mt-1">Traffic lights online</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 md:space-y-4">
+                        <h3 class="text-base md:text-lg font-semibold text-foreground">Traffic Light Control</h3>
+                        
+                        <div id="traffic-light-panel-container" class="flex gap-3 md:gap-4 overflow-x-auto pb-4">
+                            </div>
+                    </div>
+
+                    <div class="space-y-3 md:space-y-6">
+                        <h3 class="text-base md:text-lg font-semibold text-foreground">Traffic Analytics</h3>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                            
+                            <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                <h4 class="text-sm font-medium text-foreground mb-3 md:mb-4">24-Hour Traffic Pattern (Vehicles)</h4>
+                                <div class="w-full h-[180px] flex items-center justify-center">
+                                    <canvas id="chart-area-vehicles"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                <h4 class="text-sm font-medium text-foreground mb-3 md:mb-4">Peak Hours Congestion (%)</h4>
+                                <div class="w-full h-[180px] flex items-center justify-center">
+                                    <canvas id="chart-line-congestion"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="bg-card border border-border rounded-lg p-3 md:p-4 lg:col-span-2">
+                                <h4 class="text-sm font-medium text-foreground mb-3 md:mb-4">Weekly Congestion Trends</h4>
+                                <div class="w-full h-[200px] flex items-center justify-center">
+                                    <canvas id="chart-bar-weekly"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-analytics" class="page-content space-y-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-foreground">Traffic Analytics</h1>
+                        <p class="text-muted-foreground">Detailed insights and historical trends</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-card border border-border rounded-lg p-4">
+                            <div class="text-sm text-muted-foreground mb-2">Peak Hour</div>
+                            <div class="text-2xl font-bold text-foreground">7:30 AM</div>
+                            <p class="text-xs text-muted-foreground mt-1">~1,200 vehicles</p>
+                        </div>
+                        <div class="bg-card border border-border rounded-lg p-4">
+                            <div class="text-sm text-muted-foreground mb-2">Average Speed</div>
+                            <div class="text-2xl font-bold text-foreground">45.2 km/h</div>
+                            <p class="text-xs text-muted-foreground mt-1">Across all routes</p>
+                        </div>
+                        <div class="bg-card border border-border rounded-lg p-4">
+                            <div class="text-sm text-muted-foreground mb-2">Congestion Level</div>
+                            <div class="text-2xl font-bold text-traffic-moderate">35%</div>
+                            <p class="text-xs text-muted-foreground mt-1">Current congestion</p>
+                        </div>
+                        <div class="bg-card border border-border rounded-lg p-4">
+                            <div class="text-sm text-muted-foreground mb-2">Total Vehicles</div>
+                            <div class="text-2xl font-bold text-foreground">24,500</div>
+                            <p class="text-xs text-muted-foreground mt-1">Last 24 hours</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-card border border-border rounded-lg">
+                        <div class="flex gap-2 p-2 border-b border-border">
+                            <button onclick="setActiveTab('analytics', 'patterns')" class="analytics-tab px-4 py-2 rounded-md transition-colors bg-primary text-primary-foreground font-medium" data-tab="patterns">Traffic Patterns</button>
+                            <button onclick="setActiveTab('analytics', 'comparison')" class="analytics-tab px-4 py-2 rounded-md transition-colors text-muted-foreground hover:bg-muted" data-tab="comparison">Weekly Comparison</button>
+                        </div>
+
+                        <div class="p-6">
+                            <div id="analytics-patterns" class="analytics-tab-content">
+                                <div class="space-y-3 md:space-y-6">
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                                        <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                            <h4 class="text-sm font-medium text-foreground mb-3 md:mb-4">24-Hour Traffic Pattern (Vehicles)</h4>
+                                            <div class="w-full h-[180px] flex items-center justify-center">
+                                                <canvas id="chart-area-vehicles-analytics"></canvas>
+                                            </div>
+                                        </div>
+
+                                        <div class="bg-card border border-border rounded-lg p-3 md:p-4">
+                                            <h4 class="text-sm font-medium text-foreground mb-3 md:mb-4">Peak Hours Congestion (%)</h4>
+                                            <div class="w-full h-[180px] flex items-center justify-center">
+                                                <canvas id="chart-line-congestion-analytics"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="analytics-comparison" class="analytics-tab-content hidden">
+                                <h3 class="text-lg font-medium text-foreground mb-4">Weekly Congestion Trends</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-24 text-sm text-muted-foreground">Monday</div>
+                                        <div class="flex-1 bg-muted rounded-full h-8 overflow-hidden">
+                                            <div class="h-full bg-primary transition-all" style="width: 75%;"></div>
+                                        </div>
+                                        <div class="w-16 text-sm text-muted-foreground text-right">75%</div>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-24 text-sm text-muted-foreground">Wednesday</div>
+                                        <div class="flex-1 bg-muted rounded-full h-8 overflow-hidden">
+                                            <div class="h-full bg-primary transition-all" style="width: 55%;"></div>
+                                        </div>
+                                        <div class="w-16 text-sm text-muted-foreground text-right">55%</div>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-24 text-sm text-muted-foreground">Friday</div>
+                                        <div class="flex-1 bg-muted rounded-full h-8 overflow-hidden">
+                                            <div class="h-full bg-primary transition-all" style="width: 85%;"></div>
+                                        </div>
+                                        <div class="w-16 text-sm text-muted-foreground text-right">85%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="page-traffic-info" class="page-content space-y-4 md:space-y-6 max-w-5xl">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold text-foreground mb-2">Traffic Information</h1>
+                        <p class="text-sm md:text-base text-muted-foreground">Rules, regulations, safety tips, and latest traffic updates</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                        <div class="lg:col-span-2 space-y-4 md:space-y-6">
+                            <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="text-2xl md:text-3xl">📜</div>
+                                    <h2 class="text-lg md:text-xl font-semibold text-foreground">Traffic Rules & Regulations</h2>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-2">Traffic Signal Rules</h3>
+                                        <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                            <li>🔴 Red Light: Stop completely before the intersection</li>
+                                            <li>🟡 Yellow Light: Prepare to stop, proceed with caution if already in intersection</li>
+                                            <li>🟢 Green Light: Proceed when safe, yield to pedestrians and crossing traffic</li>
+                                            <li>➡️ Right Turn on Red: Allowed after complete stop unless otherwise posted</li>
+                                        </ul>
+                                    </div>
+
+                                    <div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-2">Speed Limits</h3>
+                                        <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                            <li>• Residential areas: 25-35 km/h</li>
+                                            <li>• Urban roads: 50-60 km/h</li>
+                                            <li>• Highways: 80-120 km/h (varies by region)</li>
+                                            <li>• School zones: 20 km/h during school hours</li>
+                                        </ul>
+                                    </div>
+
+                                    <div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-2">Right of Way</h3>
+                                        <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                            <li>• Pedestrians at crosswalks have absolute priority</li>
+                                            <li>• Yield to emergency vehicles with sirens/lights</li>
+                                            <li>• At intersections without signals, yield to right</li>
+                                            <li>• Roundabouts: yield to traffic already in circle</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="text-2xl md:text-3xl">🛡️</div>
+                                    <h2 class="text-lg md:text-xl font-semibold text-foreground">Safety Tips</h2>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-2">Driver Safety</h3>
+                                        <ul class="space-y-1 text-sm md:text-base text-muted-foreground">
+                                            <li>✓ Always wear seatbelts</li>
+                                            <li>✓ Maintain safe following distance</li>
+                                            <li>✓ Check blind spots before changing lanes</li>
+                                            <li>✓ Avoid distracted driving</li>
+                                            <li>✓ Never drink and drive</li>
+                                        </ul>
+                                    </div>
+
+                                    <div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-2">Pedestrian Safety</h3>
+                                        <ul class="space-y-1 text-sm md:text-base text-muted-foreground">
+                                            <li>✓ Use designated crosswalks</li>
+                                            <li>✓ Look both ways before crossing</li>
+                                            <li>✓ Make eye contact with drivers</li>
+                                            <li>✓ Stay visible at night</li>
+                                            <li>✓ Follow pedestrian signals</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="text-2xl md:text-3xl">💡</div>
+                                    <h2 class="text-lg md:text-xl font-semibold text-foreground">Pro Tips</h2>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div class="flex gap-3">
+                                        <span class="text-primary font-semibold">1.</span>
+                                        <p class="text-sm md:text-base text-muted-foreground">Plan your route ahead to avoid congested areas during peak hours (7-9 AM, 5-7 PM)</p>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <span class="text-primary font-semibold">2.</span>
+                                        <p class="text-sm md:text-base text-muted-foreground">Keep emergency contact numbers handy and know the location of nearby hospitals</p>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <span class="text-primary font-semibold">3.</span>
+                                        <p class="text-sm md:text-base text-muted-foreground">Regular vehicle maintenance prevents breakdowns and improves safety</p>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <span class="text-primary font-semibold">4.</span>
+                                        <p class="text-sm md:text-base text-muted-foreground">Use turn signals at least 100 feet before turning or changing lanes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 md:space-y-6">
+                            <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="text-2xl md:text-3xl">📰</div>
+                                    <h2 class="text-base md:text-lg font-semibold text-foreground">Latest News</h2>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div class="pb-4 border-b border-border">
+                                        <div class="text-xs text-muted-foreground mb-1">Today</div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-1">New Traffic Lights Installed</h3>
+                                        <p class="text-xs md:text-sm text-muted-foreground">Five new intelligent traffic signals deployed on Main Street</p>
+                                    </div>
+
+                                    <div class="pb-4 border-b border-border">
+                                        <div class="text-xs text-muted-foreground mb-1">Yesterday</div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-1">Road Closure Alert</h3>
+                                        <p class="text-xs md:text-sm text-muted-foreground">5th Avenue closed for maintenance until Friday</p>
+                                    </div>
+
+                                    <div class="pb-4 border-b border-border">
+                                        <div class="text-xs text-muted-foreground mb-1">2 days ago</div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-1">Safety Campaign Launch</h3>
+                                        <p class="text-xs md:text-sm text-muted-foreground">New pedestrian safety awareness program begins</p>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-xs text-muted-foreground mb-1">3 days ago</div>
+                                        <h3 class="text-sm md:text-base font-medium text-foreground mb-1">Peak Hour Update</h3>
+                                        <p class="text-xs md:text-sm text-muted-foreground">Evening rush hour extended to 7:30 PM</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-destructive/10 border border-destructive/20 rounded-lg p-4 md:p-6">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="text-2xl">🚨</div>
+                                    <h2 class="text-base md:text-lg font-semibold text-foreground">Emergency</h2>
+                                </div>
+                                <p class="text-sm md:text-base text-muted-foreground mb-3">In case of accidents or emergencies:</p>
+                                <div class="space-y-2 text-sm md:text-base">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-semibold text-foreground">Police:</span>
+                                        <span class="text-muted-foreground">911</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-semibold text-foreground">Ambulance:</span>
+                                        <span class="text-muted-foreground">911</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-semibold text-foreground">Traffic Control:</span>
+                                        <span class="text-muted-foreground">311</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-primary/10 border border-primary/20 rounded-lg p-4 md:p-6">
+                                <div class="text-2xl md:text-3xl mb-3">🌤️</div>
+                                <h2 class="text-base md:text-lg font-semibold text-foreground mb-2">Weather Alert</h2>
+                                <p class="text-sm md:text-base text-muted-foreground">
+                                    Clear skies expected today. Drive safely and watch for pedestrians.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-help" class="page-content space-y-4 md:space-y-6 max-w-4xl">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold text-foreground mb-2">Help Center</h1>
+                        <p class="text-sm md:text-base text-muted-foreground">Get assistance with the Traffic Management System</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                            <div class="text-3xl md:text-4xl mb-3 md:mb-4">📖</div>
+                            <h2 class="text-lg md:text-xl font-semibold text-foreground mb-2">Getting Started</h2>
+                            <p class="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+                                Learn how to use the dashboard to monitor traffic in real-time and manage traffic lights effectively.
+                            </p>
+                            <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                <li>• View live traffic data on the map</li>
+                                <li>• Monitor traffic light status</li>
+                                <li>• Check congestion levels</li>
+                                <li>• Analyze traffic patterns</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                            <div class="text-3xl md:text-4xl mb-3 md:mb-4">🎛️</div>
+                            <h2 class="text-lg md:text-xl font-semibold text-foreground mb-2">Dashboard Features</h2>
+                            <p class="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+                                Explore all the features available in the traffic management dashboard.
+                            </p>
+                            <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                <li>• Real-time traffic monitoring</li>
+                                <li>• Traffic light control panel</li>
+                                <li>• Historical data analysis</li>
+                                <li>• Weekly congestion reports</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                            <div class="text-3xl md:text-4xl mb-3 md:mb-4">📊</div>
+                            <h2 class="text-lg md:text-xl font-semibold text-foreground mb-2">Analytics Guide</h2>
+                            <p class="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+                                Understand traffic analytics and make data-driven decisions for traffic management.
+                            </p>
+                            <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                <li>• 24-hour traffic patterns</li>
+                                <li>• Peak hour analysis</li>
+                                <li>• Weekly trends</li>
+                                <li>• Congestion forecasting</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                            <div class="text-3xl md:text-4xl mb-3 md:mb-4">⚙️</div>
+                            <h2 class="text-lg md:text-xl font-semibold text-foreground mb-2">System Settings</h2>
+                            <p class="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+                                Configure your dashboard preferences and system settings for optimal performance.
+                            </p>
+                            <ul class="space-y-2 text-sm md:text-base text-muted-foreground">
+                                <li>• Customize display options</li>
+                                <li>• Manage notifications</li>
+                                <li>• Configure alerts</li>
+                                <li>• Update preferences</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-card border border-border rounded-lg p-4 md:p-6">
+                        <h2 class="text-lg md:text-xl font-semibold text-foreground mb-3 md:mb-4">Frequently Asked Questions</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="text-sm md:text-base font-medium text-foreground mb-2">How do I read the traffic map?</h3>
+                                <p class="text-sm md:text-base text-muted-foreground">
+                                    The map displays routes color-coded by congestion level: green for light, yellow for moderate, and red for heavy traffic.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm md:text-base font-medium text-foreground mb-2">What do the traffic light timings mean?</h3>
+                                <p class="text-sm md:text-base text-muted-foreground">
+                                    The countdown shows remaining seconds until the next signal change. Each light cycles through red, yellow, and green states.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm md:text-base font-medium text-foreground mb-2">How often is data updated?</h3>
+                                <p class="text-sm md:text-base text-muted-foreground">
+                                    Traffic data refreshes every 30 seconds, while traffic light states update in real-time every second.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-primary/10 border border-primary/20 rounded-lg p-4 md:p-6">
+                        <h2 class="text-lg md:text-xl font-semibold text-foreground mb-2">Need More Help?</h2>
+                        <p class="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+                            Contact our support team for additional assistance with the traffic management system.
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm md:text-base font-medium hover:bg-primary/90 transition-colors">
+                                Contact Support
+                            </button>
+                            <button class="px-4 py-2 bg-muted text-foreground rounded-lg text-sm md:text-base font-medium hover:bg-muted/80 transition-colors">
+                                Documentation
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-settings" class="page-content space-y-6">
+                    <div class="settings-tab-container">
+                        <div>
+                            <h1 class="text-3xl font-bold text-foreground">Settings</h1>
+                            <p class="text-muted-foreground">Manage your system configuration</p>
+                        </div>
+
+                        <div class="bg-card border border-border rounded-lg">
+                            <div class="flex gap-2 p-2 border-b border-border">
+                                <button onclick="setActiveTab('settings', 'api')" class="settings-tab px-4 py-2 rounded-md transition-colors bg-primary text-primary-foreground font-medium" data-tab="api">🔑 API Configuration</button>
+                                <button onclick="setActiveTab('settings', 'notifications')" class="settings-tab px-4 py-2 rounded-md transition-colors text-muted-foreground hover:bg-muted" data-tab="notifications">🔔 Notifications</button>
+                                <button onclick="setActiveTab('settings', 'system')" class="settings-tab px-4 py-2 rounded-md transition-colors text-muted-foreground hover:bg-muted" data-tab="system">⚙️ System</button>
+                            </div>
+
+                            <div class="p-6">
+                                <div id="settings-api" class="settings-tab-content space-y-4">
+                                    <h3 class="text-lg font-medium text-foreground">Google Maps API</h3>
+                                    <p class="text-sm text-muted-foreground">Configure your API key for real-time traffic data</p>
+                                    
+                                    <div class="space-y-2">
+                                        <label for="api-key-input" class="block text-sm font-medium text-foreground">API Key</label>
+                                        <input
+                                            type="password"
+                                            id="api-key-input"
+                                            placeholder="Enter your Google Maps API key"
+                                            class="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                        />
+                                        <p class="text-xs text-muted-foreground">Your API key is stored locally in your browser</p>
+                                    </div>
+
+                                    <div class="flex gap-2">
+                                        <button onclick="handleSaveApiKey()" class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                            Save API Key
+                                        </button>
+                                        <button onclick="handleClearApiKey()" class="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 transition-colors">
+                                            Clear API Key
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="settings-notifications" class="settings-tab-content space-y-6 hidden">
+                                    <h3 class="text-lg font-medium text-foreground">Notification Preferences</h3>
+                                    
+                                    <div class="space-y-4">
+                                        <label class="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border cursor-pointer">
+                                            <div>
+                                                <div class="text-sm font-medium text-foreground">Traffic Incidents</div>
+                                                <p class="text-xs text-muted-foreground">Get notified about accidents and road closures</p>
+                                            </div>
+                                            <input type="checkbox" id="notify-incidents" checked class="w-5 h-5 text-primary bg-input border-border rounded focus:ring-2 focus:ring-primary"/>
+                                        </label>
+
+                                        <label class="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border cursor-pointer">
+                                            <div>
+                                                <div class="text-sm font-medium text-foreground">Congestion Alerts</div>
+                                                <p class="text-xs text-muted-foreground">Alerts when traffic congestion exceeds threshold</p>
+                                            </div>
+                                            <input type="checkbox" id="notify-congestion" checked class="w-5 h-5 text-primary bg-input border-border rounded focus:ring-2 focus:ring-primary"/>
+                                        </label>
+
+                                        <label class="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border cursor-pointer">
+                                            <div>
+                                                <div class="text-sm font-medium text-foreground">Maintenance Updates</div>
+                                                <p class="text-xs text-muted-foreground">System maintenance notifications</p>
+                                            </div>
+                                            <input type="checkbox" id="notify-maintenance" class="w-5 h-5 text-primary bg-input border-border rounded focus:ring-2 focus:ring-primary"/>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="settings-system" class="settings-tab-content space-y-6 hidden">
+                                    <div>
+                                        <h3 class="text-lg font-medium text-foreground">System Configuration</h3>
+                                        <div class="mt-4 space-y-4">
+                                            <div>
+                                                <label for="refresh-interval-input" class="block text-sm font-medium text-foreground mb-2">Data Refresh Interval (seconds)</label>
+                                                <input
+                                                    type="number"
+                                                    id="refresh-interval-input"
+                                                    min="10"
+                                                    max="300"
+                                                    value="30"
+                                                    class="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                />
+                                                <p class="text-xs text-muted-foreground mt-1">How often to fetch new traffic data (10-300 seconds)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 class="text-lg font-medium text-foreground">Data Management</h3>
+                                        <p class="text-sm text-muted-foreground mt-2 mb-4">Clear all stored data to reset the application</p>
+                                        <button
+                                            onclick="handleClearAllData()"
+                                            class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors"
+                                        >
+                                            Clear All Data
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js'></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
